@@ -19,4 +19,5 @@ jobs:
           name: "totto2727-org/mdt"
           rolling: true
           visibility: "public"
-          # include-output-paths: true
+          # Individual output-path publication is disabled to avoid unauthorized cache evaluation while publishing the flake.
+          include-output-paths: false
