@@ -4,7 +4,11 @@ import {
   "moonbitlang/core/string",
   "moonbitlang/x/path",
   "totto2727/admiral",
-  "totto2727/opencode-sdk" @opencode,
+  "totto2727/agent-sdk/cli" @agent,
+  "totto2727/agent-sdk/cli/codex" @agent_codex,
+  "totto2727/agent-sdk/cli/opencode" @agent_opencode,
+  "totto2727/codex-sdk/cli" @codex,
+  "totto2727/opencode-sdk/cli" @opencode,
 }
 
 supported_targets = "native"

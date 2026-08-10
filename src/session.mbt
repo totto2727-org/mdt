@@ -5,6 +5,21 @@ struct ModelSelection {
 }
 
 ///|
+enum Provider {
+  Codex
+  OpenCode
+}
+
+///|
+fn parse_provider(raw : String) -> Provider raise {
+  match raw {
+    "codex" => Codex
+    "opencode" => OpenCode
+    _ => fail("unsupported provider: \{raw}; expected codex or opencode")
+  }
+}
+
+///|
 fn parse_model(raw : String) -> ModelSelection raise {
   guard raw.find("/") is Some(slash) && slash > 0 && slash < raw.length() - 1 else {
     fail("invalid model format: \{raw}")
@@ -20,6 +35,30 @@ fn ModelSelection::to_string(self : ModelSelection) -> String {
 ///|
 fn translation_opencode_config() -> @opencode.OpenCodeConfigObject {
   { "permission": @opencode.ConfigString("deny") }
+}
+
+///|
+fn translation_opencode_thread_options(
+  model : ModelSelection?,
+) -> @opencode.ThreadOptions {
+  @opencode.ThreadOptions::ThreadOptions(
+    model=model
+      .map(fn(selection) { selection.to_string() })
+      .unwrap_or("opencode-go/deepseek-v4-flash"),
+    title="mdt-translate",
+  )
+}
+
+///|
+fn translation_codex_thread_options(
+  model : ModelSelection?,
+) -> @codex.ThreadOptions {
+  @codex.ThreadOptions::ThreadOptions(
+    model?=model.map(fn(selection) { selection.model_id }),
+    sandbox_mode=@codex.ReadOnly,
+    skip_git_repo_check=true,
+    approval_policy=@codex.Never,
+  )
 }
 
 ///|
@@ -41,31 +80,35 @@ fn translation_prompt(lang : String, text : String) -> String {
 
 ///|
 async fn translate_markdown_with_client(
-  client : @opencode.OpenCode,
+  client : @agent.Cli,
   lang : String,
-  model : ModelSelection,
   text : String,
 ) -> String {
-  client
-  .start_thread(
-    options=@opencode.ThreadOptions::ThreadOptions(
-      model=model.to_string(),
-      title="mdt-translate",
-    ),
-  )
-  .run(@opencode.Prompt(translation_prompt(lang, text))).final_response
+  client.start().prompt(@agent.Prompt::Prompt(translation_prompt(lang, text))).text
 }
 
 ///|
 async fn translate_markdown(
+  provider : Provider,
   lang : String,
-  model : ModelSelection,
+  model : ModelSelection?,
   text : String,
 ) -> String {
-  let client = @opencode.OpenCode::OpenCode(
-    options=@opencode.OpenCodeOptions::OpenCodeOptions(
-      config=translation_opencode_config(),
-    ),
-  )
-  translate_markdown_with_client(client, lang, model, text)
+  match provider {
+    Codex => {
+      let client = @agent_codex.codex_cli(
+        thread_options=translation_codex_thread_options(model),
+      )
+      translate_markdown_with_client(client, lang, text)
+    }
+    OpenCode => {
+      let client = @agent_opencode.opencode_cli(
+        options=@opencode.OpenCodeOptions::OpenCodeOptions(
+          config=translation_opencode_config(),
+        ),
+        thread_options=translation_opencode_thread_options(model),
+      )
+      translate_markdown_with_client(client, lang, text)
+    }
+  }
 }

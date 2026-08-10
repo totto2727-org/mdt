@@ -18,7 +18,13 @@ let translate_model_option : @admiral.OptionDef[String] = @admiral.string(
   "model",
   short='m',
   description="Model in provider/model format",
-  default=Some("opencode-go/deepseek-v4-flash"),
+)
+
+///|
+let translate_provider_option : @admiral.OptionDef[String] = @admiral.string(
+  "provider",
+  description="Agent provider: opencode or codex",
+  default=Some("opencode"),
 )
 
 ///|
@@ -32,16 +38,25 @@ let translate_force_option : @admiral.OptionDef[Bool] = @admiral.bool(
 struct TranslateOptions {
   file : @path.Path
   lang : String
-  model : ModelSelection
+  provider : Provider
+  model : ModelSelection?
   force : Bool
 }
 
 ///|
 fn translate_options(context : @admiral.Context) -> TranslateOptions raise {
+  let provider = parse_provider(
+    context.get_string_required(translate_provider_option),
+  )
+  let model = match context.get_string(translate_model_option) {
+    Some(raw) => Some(parse_model(raw))
+    None => None
+  }
   {
     file: @path.Path(context.get_string_required(translate_file_argument)),
     lang: normalize_locale(context.get_string_required(translate_lang_option)),
-    model: parse_model(context.get_string_required(translate_model_option)),
+    provider,
+    model,
     force: context.get_bool(translate_force_option),
   }
 }
@@ -55,7 +70,12 @@ async fn run_translate(context : @admiral.Context) -> Unit {
     fail("output file already exists: \{output_text}")
   }
   let input = @fs.read_file(options.file.to_string()).text()
-  let translated = translate_markdown(options.lang, options.model, input)
+  let translated = translate_markdown(
+    options.provider,
+    options.lang,
+    options.model,
+    input,
+  )
   @fs.write_file(output_text, translated, create_mode=CreateOrTruncate)
   println("Written to \{output_text}")
 }
