@@ -53,5 +53,5 @@ jobs:
           moon info
           moon check
           moon build
-          moon test
+          moon test src
           moon package --list
