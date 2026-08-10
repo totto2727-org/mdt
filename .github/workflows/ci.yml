@@ -14,10 +14,40 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: totto2727-org/agent-core-sdk
+          ref: 127a11e9c4b0bf0067e3082a55af0a44e69c5fe0
+          path: .ci-deps/agent-core-sdk
+      - uses: actions/checkout@v7
+        with:
+          repository: totto2727-org/codex-sdk
+          ref: ea482e00842baf40f1a6103a21ca58ef0382acfa
+          path: .ci-deps/codex-sdk
+      - uses: actions/checkout@v7
+        with:
+          repository: totto2727-org/opencode-sdk
+          ref: c86e8946c1e02b977ea0ae17e305b76aab6d7140
+          path: .ci-deps/opencode-sdk
+      - uses: actions/checkout@v7
+        with:
+          repository: totto2727-org/agent-sdk
+          ref: c6ce792f813d1be91a9e6e4fef13380d308d7e3d
+          path: .ci-deps/agent-sdk
       - uses: totto2727-org/monorepo/.github/actions/setup-nix@main
       - name: Check
         shell: bash
         run: |
+          trap 'rm -f moon.work' EXIT
+          cat > moon.work <<'EOF'
+          members = [
+            ".",
+            ".ci-deps/agent-core-sdk",
+            ".ci-deps/codex-sdk",
+            ".ci-deps/opencode-sdk",
+            ".ci-deps/agent-sdk",
+          ]
+          EOF
           eval "$(nix print-dev-env "$GITHUB_WORKSPACE#default")"
           moon update
           moon info
