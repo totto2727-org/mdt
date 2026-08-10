@@ -19,5 +19,7 @@ jobs:
           name: "totto2727-org/mdt"
           rolling: true
           visibility: "public"
-          # Individual output-path publication is disabled to avoid unauthorized cache evaluation while publishing the flake.
+          # Skip FlakeHub pre-publish evaluation because this flake's cache-backed inputs are unavailable to that evaluator.
+          my-flake-is-too-big: true
+          # Individual output paths are not registered during publication.
           include-output-paths: false
