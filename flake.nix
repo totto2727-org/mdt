@@ -46,8 +46,6 @@
         {
           default = pkgs.mkShell {
             packages = [
-              pkgs.clang
-              pkgs.git
               pkgs.moonbit-bin.moonbit.latest
             ];
           };

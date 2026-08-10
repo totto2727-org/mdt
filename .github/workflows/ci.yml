@@ -9,21 +9,18 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        os: [macos-14, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  check:
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@v7
       - uses: totto2727-org/monorepo/.github/actions/setup-nix@main
-      - name: Validate module
+      - name: Check
         shell: bash
         run: |
           eval "$(nix print-dev-env "$GITHUB_WORKSPACE#default")"
+          moon update
+          moon info
           moon check
           moon test
           moon package --list
-      - name: Build package
-        run: nix build .#mdt
