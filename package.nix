@@ -4,5 +4,4 @@ moonPlatform.buildMoonPackage {
   inherit moonRegistryIndex;
   moonMod = ./moon.mod;
   doCheck = false;
-  meta.mainProgram = "mdt";
 }
