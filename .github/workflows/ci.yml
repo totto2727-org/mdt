@@ -22,5 +22,6 @@ jobs:
           moon update
           moon info
           moon check
+          moon build
           moon test
           moon package --list
