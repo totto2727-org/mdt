@@ -19,7 +19,7 @@ jobs:
           name: "totto2727-org/mdt"
           rolling: true
           visibility: "public"
-          # Skip FlakeHub pre-publish evaluation because this flake's cache-backed inputs are unavailable to that evaluator.
+          # Limit pre-publish evaluation to the runner system because cross-system cache inputs are unavailable.
           my-flake-is-too-big: true
           # Individual output paths are not registered during publication.
           include-output-paths: false
