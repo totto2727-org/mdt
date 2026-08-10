@@ -1,6 +1,6 @@
 name = "totto2727/mdt"
 
-version = "0.1.6"
+version = "0.1.7"
 
 preferred_target = "native"
 
@@ -9,13 +9,13 @@ supported_targets = "native"
 import {
   "moonbitlang/async@0.20.3",
   "moonbitlang/x@0.4.47",
-  "totto2727/admiral@0.6.1",
+  "totto2727/admiral@0.6.2",
   "totto2727/opencode-sdk@0.2.2",
 }
 
 readme = "README.md"
 
-repository = "https://github.com/totto2727-org/monorepo"
+repository = "https://github.com/totto2727-org/mdt"
 
 license = "MIT"
 

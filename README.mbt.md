@@ -23,15 +23,18 @@ module.mbt.md     -> module.ja.mbt.md
 module.en.mbt.md  -> module.ja.mbt.md
 ```
 
-## Build
+## Development
 
-Run from the repository root:
+Enter the Nix development shell, then validate the package:
 
 ```bash
-vp run mbt:build
+nix develop
+moon check
+moon test
+moon package --list
 ```
 
-The native executable is written under the repository-root `_build/` tree.
+Build the installable package with `nix build .#mdt`.
 
 ## How it works
 
