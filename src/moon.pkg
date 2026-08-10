@@ -13,4 +13,8 @@ import {
 
 supported_targets = "native"
 
+import {
+  "moonbitlang/async/process",
+} for "wbtest"
+
 pkgtype(kind: "executable")

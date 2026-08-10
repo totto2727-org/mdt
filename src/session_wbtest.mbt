@@ -57,6 +57,23 @@ priv struct FakeTranslationCli {
 }
 
 ///|
+async fn write_fake_executable(executable : @path.Path, script : String) -> Unit {
+  let (exit_code, _, stderr) = @process.collect_output(
+    "/bin/sh",
+    [
+      "-c",
+      "printf '%s' \"$1\" > \"$2\" && chmod 755 \"$2\"",
+      "fixture-writer",
+      script,
+      executable.to_string(),
+    ],
+  )
+  if exit_code != 0 {
+    fail("failed to create fake CLI: \{stderr.text()}")
+  }
+}
+
+///|
 async fn with_fake_translation_cli(
   run : async (FakeTranslationCli) -> Unit,
 ) -> Unit {
@@ -73,8 +90,7 @@ async fn with_fake_translation_cli(
     #|/usr/bin/env | /usr/bin/sort > "$records/env"
     #|printf '%s\n' '{"type":"text","timestamp":1,"sessionID":"session-1","part":{"type":"text","text":"# こんにちは"}}'
     #|
-  @fs.write_file(executable.to_string(), script, create_mode=CreateOrTruncate)
-  @fs.chmod(executable.to_string(), 0o755)
+  write_fake_executable(executable, script)
   let fixture : FakeTranslationCli = { executable, records }
   run(fixture) catch {
     error => {
@@ -158,8 +174,7 @@ async fn with_fake_codex_cli(run : async (FakeCodexCli) -> Unit) -> Unit {
     #|printf '%s\n' '{"type":"item.completed","item":{"id":"item-1","type":"agent_message","text":"# こんにちは"}}'
     #|printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":1,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":1,"reasoning_output_tokens":0}}'
     #|
-  @fs.write_file(executable.to_string(), script, create_mode=CreateOrTruncate)
-  @fs.chmod(executable.to_string(), 0o755)
+  write_fake_executable(executable, script)
   let fixture : FakeCodexCli = { executable, records }
   run(fixture) catch {
     error => {
