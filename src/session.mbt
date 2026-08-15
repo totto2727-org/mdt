@@ -31,7 +31,7 @@ fn translation_opencode_thread_options(
 ///|
 fn translation_codex_thread_options(model : String?) -> @codex.ThreadOptions {
   @codex.ThreadOptions::ThreadOptions(
-    model=model.unwrap_or("luna"),
+    model?,
     sandbox_mode=@codex.ReadOnly,
     skip_git_repo_check=true,
     approval_policy=@codex.Never,
