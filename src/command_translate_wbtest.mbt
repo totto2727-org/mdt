@@ -98,7 +98,7 @@ test "panic_parse_output_format 3 - rejects an unsupported format" {
 ///|
 async test "panic_ensure_outputs_available - rejects inputs sharing an output path" {
   let options : TranslateOptions = {
-    files: [@path.Path("guide.md"), @path.Path("./guide.en.md")],
+    files: [@path.Path("guide.md"), @path.Path("guide.en.md").resolve()],
     lang: "ja",
     agent: OpenCode,
     model: None,

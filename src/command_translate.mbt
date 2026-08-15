@@ -118,7 +118,7 @@ fn translate_output_path(
   options : TranslateOptions,
   file : @path.Path,
 ) -> @path.Path {
-  target_path(file, options.lang).normalize()
+  target_path(file, options.lang).resolve()
 }
 
 ///|
