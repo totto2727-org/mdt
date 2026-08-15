@@ -1,24 +1,25 @@
 ---
 name: mdt
-description: Translate a Markdown file to a sibling language file using the selected OpenCode or Codex CLI through agent-sdk. Use when localizing README.md, AGENTS.md, docs, or other Markdown while preserving code blocks, fences, and frontmatter.
+description: Translate Markdown files to sibling language files or standard output using the selected OpenCode or Codex CLI through agent-sdk. Use when localizing README.md, AGENTS.md, docs, or other Markdown while preserving code blocks, fences, and frontmatter.
 allowed-tools: Bash(mdt:*)
 ---
 
 # `mdt` — Markdown translator
 
-Uses the provider-neutral `agent-sdk` contract with an OpenCode or Codex adapter to translate a single Markdown file. It is designed for doc localization where code fences, links, frontmatter, and tables must remain intact.
+Uses the provider-neutral `agent-sdk` contract with an OpenCode or Codex adapter to translate Markdown files. It is designed for doc localization where code fences, links, frontmatter, and tables must remain intact.
 
 ## Usage
 
 ```bash
-mdt <file> --lang <code> [--agent <opencode|codex>] [--model <model>] [--force]
+mdt <file>... --lang <code> [--agent <opencode|codex>] [--model <model>] [--force] [--format <file|stdio>]
 ```
 
-- `<file>` — path to the source Markdown.
-- `--lang, -l` — required. Target language code (e.g. `ja`, `ja-JP`, `en`).
+- `<file>...` — one or more source Markdown paths; multiple files are translated up to four at a time in `file` format.
+- `--lang, -l` — required. Target language code (e.g. `ja`, `ja-JP`, `en`); `MDT_LANG` provides the environment value.
 - `--agent` — optional. Selects `opencode` or `codex`; `MDT_AGENT` provides the environment value. Defaults to `opencode`.
 - `--model, -m` — optional. OpenCode accepts `provider/model`; Codex accepts a model ID. `MDT_MODEL` provides the environment value. Defaults to `opencode-go/deepseek-v4-flash` for OpenCode and `gpt-5.6-luna` for Codex.
-- `--force, -f` — overwrite an existing output file.
+- `--force, -f` — overwrite an existing output file; `MDT_FORCE` provides the boolean environment value.
+- `--format` — selects sibling file output (`file`) or raw Markdown on standard output (`stdio`); `MDT_FORMAT` provides the environment value and the default is `file`.
 
 Command-line options override environment variables, which override the defaults.
 
@@ -45,6 +46,12 @@ mdt --lang en --agent codex docs/AGENTS.md
 
 # Pin an OpenCode model
 MDT_AGENT=opencode mdt --lang en --model anthropic/claude-sonnet-4-6 docs/AGENTS.md
+
+# Translate multiple files concurrently
+mdt --lang ja README.md docs/guide.md
+
+# Pipe one translated document to another command
+mdt --lang ja --format stdio README.md > README.ja.md
 ```
 
 ## Prerequisites
@@ -54,5 +61,5 @@ MDT_AGENT=opencode mdt --lang en --model anthropic/claude-sonnet-4-6 docs/AGENTS
 
 ## Limits
 
-- One file per invocation. For batch use, drive `mdt` from a shell loop or `xargs`.
-- The whole file is sent in one prompt, so it must fit within the selected model's context window.
+- `stdio` format accepts exactly one input file and emits the final raw Markdown after the provider completes.
+- Each whole file is sent in one prompt, so it must fit within the selected model's context window.

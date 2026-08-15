@@ -1,7 +1,7 @@
 ///|
-let translate_file_argument : @admiral.PositionDef[String] = @admiral.position_string(
-  "file",
-  description="Markdown file to translate",
+let translate_files_argument : @admiral.PositionDef[Array[String]] = @admiral.position_strings(
+  "files",
+  description="Markdown files to translate",
   required=true,
 )
 
@@ -10,6 +10,7 @@ let translate_lang_option : @admiral.OptionDef[String] = @admiral.string(
   "lang",
   short='l',
   description="Target language code (for example, ja or ja-JP)",
+  env="MDT_LANG",
   required=true,
 )
 
@@ -34,43 +35,150 @@ let translate_force_option : @admiral.OptionDef[Bool] = @admiral.bool(
   "force",
   short='f',
   description="Overwrite an existing output file",
+  env="MDT_FORCE",
 )
 
 ///|
+let translate_format_option : @admiral.OptionDef[String] = @admiral.string(
+  "format",
+  description="Output format: file or stdio",
+  env="MDT_FORMAT",
+  default=Some("file"),
+)
+
+///|
+enum OutputFormat {
+  File
+  Stdio
+} derive(Debug, Eq)
+
+///|
+fn parse_output_format(raw : String) -> OutputFormat raise {
+  match raw {
+    "file" => File
+    "stdio" => Stdio
+    _ => fail("unsupported format: \{raw}; expected file or stdio")
+  }
+}
+
+///|
 struct TranslateOptions {
-  file : @path.Path
+  files : ReadOnlyArray[@path.Path]
   lang : String
   agent : Agent
   model : String?
   force : Bool
+  format : OutputFormat
 }
 
 ///|
 fn translate_options(context : @admiral.Context) -> TranslateOptions raise {
   {
-    file: @path.Path(context.get_string_required(translate_file_argument)),
+    files: context.get_strings_required(translate_files_argument).all.map(file => {
+      @path.Path(file)
+    }),
     lang: normalize_locale(context.get_string_required(translate_lang_option)),
     agent: parse_agent(context.get_string_required(translate_agent_option)),
     model: context.get_string(translate_model_option),
     force: context.get_bool(translate_force_option),
+    format: parse_output_format(
+      context.get_string_required(translate_format_option),
+    ),
   }
 }
 
 ///|
 async fn run_translate(context : @admiral.Context) -> Unit {
   let options = translate_options(context)
-  let output = target_path(options.file, options.lang)
-  let output_text = output.to_string()
-  guard options.force || !@fs.exists(output_text) else {
-    fail("output file already exists: \{output_text}")
+  match options.format {
+    Stdio => run_translate_stdio(options)
+    File => run_translate_files(options)
   }
-  let input = @fs.read_file(options.file.to_string()).text()
-  let translated = translate_markdown(
-    options.agent,
-    options.lang,
-    options.model,
-    input,
+}
+
+///|
+async fn translate_file(
+  options : TranslateOptions,
+  file : @path.Path,
+) -> String {
+  let input = @fs.read_file(file.to_string()).text()
+  translate_markdown(options.agent, options.lang, options.model, input)
+}
+
+///|
+async fn run_translate_stdio(options : TranslateOptions) -> Unit {
+  guard options.files is [file] else {
+    fail("--format stdio requires exactly one input file")
+  }
+  @stdio.stdout.write(translate_file(options, file))
+}
+
+///|
+async fn translate_output_path(
+  options : TranslateOptions,
+  file : @path.Path,
+) -> @path.Path {
+  let output = target_path(file, options.lang).resolve()
+  let output_text = output.to_string()
+  if @fs.exists(output_text) {
+    @path.Path(@fs.realpath(output_text))
+  } else {
+    let parent = @path.Path(@fs.realpath(output.dirname().to_string()))
+    parent.join(@path.Path(output.basename().to_owned()))
+  }
+}
+
+///|
+async fn ensure_outputs_available(
+  options : TranslateOptions,
+) -> Array[@path.Path] {
+  let output_paths = @async.all(
+    options.files.map(file => () => translate_output_path(options, file)),
+    max_concurrent=4,
   )
-  @fs.write_file(output_text, translated, create_mode=CreateOrTruncate)
+  let outputs : Set[String] = Set([])
+  for output in output_paths {
+    let output_text = output.to_string()
+    guard !outputs.contains(output_text) else {
+      fail("multiple input files resolve to the same output: \{output_text}")
+    }
+    outputs.add(output_text)
+    if !options.force {
+      guard !@fs.exists(output_text) else {
+        fail("output file already exists: \{output_text}")
+      }
+    }
+  }
+  output_paths
+}
+
+///|
+async fn translate_file_to_output(
+  options : TranslateOptions,
+  file : @path.Path,
+  output : @path.Path,
+) -> Unit {
+  let output_text = output.to_string()
+  let translated = translate_file(options, file)
+  let create_mode : @fs.CreateMode = if options.force {
+    CreateOrTruncate
+  } else {
+    CreateNew
+  }
+  @async.protect_from_cancel(async fn() {
+    @fs.write_file(output_text, translated, create_mode~)
+  })
   println("Written to \{output_text}")
+}
+
+///|
+async fn run_translate_files(options : TranslateOptions) -> Unit {
+  let output_paths = ensure_outputs_available(options)
+  @async.all(
+    options.files.mapi((index, file) => {
+      () => translate_file_to_output(options, file, output_paths[index])
+    }),
+    max_concurrent=4,
+  )
+  |> ignore
 }

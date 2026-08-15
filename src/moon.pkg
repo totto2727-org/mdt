@@ -1,6 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "moonbitlang/async/stdio",
   "moonbitlang/core/string",
   "moonbitlang/x/path",
   "totto2727/admiral",
