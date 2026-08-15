@@ -117,25 +117,28 @@ async fn run_translate_stdio(options : TranslateOptions) -> Unit {
 async fn translate_output_path(
   options : TranslateOptions,
   file : @path.Path,
-) -> String {
+) -> @path.Path {
   let output = target_path(file, options.lang).resolve()
   let output_text = output.to_string()
   if @fs.exists(output_text) {
-    @fs.realpath(output_text)
+    @path.Path(@fs.realpath(output_text))
   } else {
     let parent = @path.Path(@fs.realpath(output.dirname().to_string()))
-    parent.join(@path.Path(output.basename().to_owned())).to_string()
+    parent.join(@path.Path(output.basename().to_owned()))
   }
 }
 
 ///|
-async fn ensure_outputs_available(options : TranslateOptions) -> Array[String] {
+async fn ensure_outputs_available(
+  options : TranslateOptions,
+) -> Array[@path.Path] {
   let output_paths = @async.all(
     options.files.map(file => () => translate_output_path(options, file)),
     max_concurrent=4,
   )
   let outputs : Set[String] = Set([])
-  for output_text in output_paths {
+  for output in output_paths {
+    let output_text = output.to_string()
     guard !outputs.contains(output_text) else {
       fail("multiple input files resolve to the same output: \{output_text}")
     }
@@ -153,8 +156,9 @@ async fn ensure_outputs_available(options : TranslateOptions) -> Array[String] {
 async fn translate_file_to_output(
   options : TranslateOptions,
   file : @path.Path,
-  output_text : String,
+  output : @path.Path,
 ) -> Unit {
+  let output_text = output.to_string()
   let translated = translate_file(options, file)
   let create_mode : @fs.CreateMode = if options.force {
     CreateOrTruncate
