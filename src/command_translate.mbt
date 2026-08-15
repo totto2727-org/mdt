@@ -17,7 +17,7 @@ let translate_lang_option : @admiral.OptionDef[String] = @admiral.string(
 let translate_model_option : @admiral.OptionDef[String] = @admiral.string(
   "model",
   short='m',
-  description="OpenCode provider/model (default: opencode-go/deepseek-v4-flash) or Codex model ID (default: Codex CLI selection)",
+  description="OpenCode provider/model (default: opencode-go/deepseek-v4-flash) or Codex model ID (default: gpt-5.6-luna)",
   env="MDT_MODEL",
 )
 

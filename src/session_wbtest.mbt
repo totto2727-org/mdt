@@ -179,7 +179,7 @@ async test "translate_markdown_with_client 2 - passes the selected Codex model" 
 }
 
 ///|
-async test "translate_markdown_with_client 3 - lets Codex select its default model" {
+async test "translate_markdown_with_client 3 - defaults Codex to GPT-5.6 Luna" {
   with_fake_codex_cli(async fn(fixture) {
     let environment : Map[String, String] = {
       "PATH": "/usr/bin:/bin",
@@ -193,6 +193,6 @@ async test "translate_markdown_with_client 3 - lets Codex select its default mod
       thread_options=translation_codex_thread_options(None),
     )
     translate_markdown_with_client(client, "ja", "# Hello") |> ignore
-    assert_false(fixture.read("args").contains("--model\n"))
+    assert_true(fixture.read("args").contains("--model\ngpt-5.6-luna\n"))
   })
 }
