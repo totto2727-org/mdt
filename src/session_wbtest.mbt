@@ -1,45 +1,19 @@
 ///|
-test "parse_model 1 - separates provider and model IDs" {
-  let model = parse_model("anthropic/claude-sonnet-4-6")
-  inspect(model.provider_id, content="anthropic")
-  inspect(model.model_id, content="claude-sonnet-4-6")
+test "parse_agent 1 - accepts Codex and OpenCode" {
+  assert_true(parse_agent("codex") is Codex)
+  assert_true(parse_agent("opencode") is OpenCode)
 }
 
 ///|
-test "parse_provider 1 - accepts Codex and OpenCode" {
-  assert_true(parse_provider("codex") is Codex)
-  assert_true(parse_provider("opencode") is OpenCode)
-}
-
-///|
-test "panic_parse_provider 2 - rejects an unsupported provider" {
-  try! (parse_provider("other") |> ignore)
-}
-
-///|
-test "panic_parse_model 2 - rejects a missing provider ID" {
-  try! (parse_model("/claude-sonnet-4-6") |> ignore)
-}
-
-///|
-test "panic_parse_model 3 - rejects a missing model ID" {
-  try! (parse_model("anthropic/") |> ignore)
-}
-
-///|
-test "ModelSelection to_string 1 - returns the CLI model ID" {
-  inspect(
-    parse_model("anthropic/claude-sonnet-4-6").to_string(),
-    content="anthropic/claude-sonnet-4-6",
-  )
+test "panic_parse_agent 2 - rejects an unsupported agent" {
+  try! (parse_agent("other") |> ignore)
 }
 
 ///|
 test "translation_opencode_config 1 - denies every tool" {
-  match translation_opencode_config().get("permission") {
-    Some(@opencode.ConfigString(value)) => inspect(value, content="deny")
-    _ => fail("expected deny-all OpenCode configuration")
-  }
+  json_inspect(Json::object(translation_opencode_config()), content={
+    "permission": "deny",
+  })
 }
 
 ///|
@@ -57,17 +31,17 @@ priv struct FakeTranslationCli {
 }
 
 ///|
-async fn write_fake_executable(executable : @path.Path, script : String) -> Unit {
-  let (exit_code, _, stderr) = @process.collect_output(
-    "/bin/sh",
-    [
-      "-c",
-      "printf '%s' \"$1\" > \"$2\" && chmod 755 \"$2\"",
-      "fixture-writer",
-      script,
-      executable.to_string(),
-    ],
-  )
+async fn write_fake_executable(
+  executable : @path.Path,
+  script : String,
+) -> Unit {
+  let (exit_code, _, stderr) = @process.collect_output("/bin/sh", [
+    "-c",
+    "printf '%s' \"$1\" > \"$2\" && chmod 755 \"$2\"",
+    "fixture-writer",
+    script,
+    executable.to_string(),
+  ])
   if exit_code != 0 {
     fail("failed to create fake CLI: \{stderr.text()}")
   }
@@ -117,8 +91,8 @@ async test "translate_markdown_with_client 1 - uses OpenCode CLI JSON mode" {
       "MDT_OPENCODE_RECORDS": fixture.records,
     }
     let client = @agent_opencode.opencode_cli(
-      options=@opencode.OpenCodeOptions::OpenCodeOptions(
-        opencode_path_override=fixture.executable,
+      options=@opencode.ClientOptions::ClientOptions(
+        executable_path_override=fixture.executable,
         config=translation_opencode_config(),
         env=environment,
       ),
@@ -191,20 +165,18 @@ async fn FakeCodexCli::read(self : FakeCodexCli, name : String) -> String {
 }
 
 ///|
-async test "translate_markdown_with_client 2 - maps the legacy provider model to Codex safely" {
+async test "translate_markdown_with_client 2 - passes the selected Codex model" {
   with_fake_codex_cli(async fn(fixture) {
     let environment : Map[String, String] = {
       "PATH": "/usr/bin:/bin",
       "MDT_CODEX_RECORDS": fixture.records,
     }
     let client = @agent_codex.codex_cli(
-      options=@codex.CodexOptions::CodexOptions(
-        codex_path_override=fixture.executable,
+      options=@codex.ClientOptions::ClientOptions(
+        executable_path_override=fixture.executable,
         env=environment,
       ),
-      thread_options=translation_codex_thread_options(
-        Some(parse_model("openai/gpt-5.2-codex")),
-      ),
+      thread_options=translation_codex_thread_options(Some("gpt-5.2-codex")),
     )
     let translated = translate_markdown_with_client(client, "ja", "# Hello")
     inspect(translated, content="# こんにちは")
@@ -221,20 +193,20 @@ async test "translate_markdown_with_client 2 - maps the legacy provider model to
 }
 
 ///|
-async test "translate_markdown_with_client 3 - lets Codex select its default model" {
+async test "translate_markdown_with_client 3 - defaults Codex to luna" {
   with_fake_codex_cli(async fn(fixture) {
     let environment : Map[String, String] = {
       "PATH": "/usr/bin:/bin",
       "MDT_CODEX_RECORDS": fixture.records,
     }
     let client = @agent_codex.codex_cli(
-      options=@codex.CodexOptions::CodexOptions(
-        codex_path_override=fixture.executable,
+      options=@codex.ClientOptions::ClientOptions(
+        executable_path_override=fixture.executable,
         env=environment,
       ),
       thread_options=translation_codex_thread_options(None),
     )
     translate_markdown_with_client(client, "ja", "# Hello") |> ignore
-    assert_false(fixture.read("args").contains("--model\n"))
+    assert_true(fixture.read("args").contains("--model\nluna\n"))
   })
 }

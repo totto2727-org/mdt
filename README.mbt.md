@@ -5,15 +5,17 @@ A native MoonBit CLI that translates one Markdown file through the installed Ope
 ## Usage
 
 ```bash
-mdt <file> --lang <code> [--provider <opencode|codex>] [--model <provider/model>] [--force]
+mdt <file> --lang <code> [--agent <opencode|codex>] [--model <model>] [--force]
 ```
 
-| Flag | Alias | Description | Default |
+| Flag | Environment | Description | Default |
 | --- | --- | --- | --- |
-| `--lang` | `-l` | Target language code, such as `ja` or `ja-JP` | required |
-| `--provider` | | Agent provider: `opencode` or `codex` | `opencode` |
-| `--model` | `-m` | Model in `provider/model` format | OpenCode: `opencode-go/deepseek-v4-flash`; Codex: CLI default |
-| `--force` | `-f` | Overwrite an existing output file | off |
+| `--lang`, `-l` | | Target language code, such as `ja` or `ja-JP` | required |
+| `--agent` | `MDT_AGENT` | Agent CLI: `opencode` or `codex` | `opencode` |
+| `--model`, `-m` | `MDT_MODEL` | OpenCode `provider/model` or Codex model ID | OpenCode: `opencode-go/deepseek-v4-flash`; Codex: `luna` |
+| `--force`, `-f` | | Overwrite an existing output file | off |
+
+Command-line options override environment variables, which override the defaults.
 
 The output is written beside the input with the normalized language tag before its extension. Existing language tags are replaced, and compound `.mbt.md` extensions are preserved.
 
@@ -43,7 +45,7 @@ Build the installable package with `nix build .#mdt`.
 2. The CLI refuses to overwrite an existing output before starting the selected provider unless `--force` is present.
 3. `totto2727/agent-sdk/cli` sends the common translation prompt to the selected provider adapter.
 4. The OpenCode adapter starts `opencode run --format json` with the selected `provider/model` and sends a deny-all permission configuration through `OPENCODE_CONFIG_CONTENT`.
-5. The Codex adapter maps the existing `provider/model` selection to the Codex model ID and applies `approval_policy=never`, `--sandbox read-only`, and `--skip-git-repo-check`.
+5. The Codex adapter passes the selected model ID and applies `approval_policy=never`, `--sandbox read-only`, and `--skip-git-repo-check`.
 6. Provider JSONL text events are joined by the adapter and written to the resolved output path.
 
 The CLI sends the whole file in one prompt. A file larger than the selected model's context window is not chunked.

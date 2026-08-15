@@ -1,60 +1,37 @@
 ///|
-struct ModelSelection {
-  provider_id : String
-  model_id : String
-}
-
-///|
-enum Provider {
+enum Agent {
   Codex
   OpenCode
 }
 
 ///|
-fn parse_provider(raw : String) -> Provider raise {
+fn parse_agent(raw : String) -> Agent raise {
   match raw {
     "codex" => Codex
     "opencode" => OpenCode
-    _ => fail("unsupported provider: \{raw}; expected codex or opencode")
+    _ => fail("unsupported agent: \{raw}; expected codex or opencode")
   }
 }
 
 ///|
-fn parse_model(raw : String) -> ModelSelection raise {
-  guard raw.find("/") is Some(slash) && slash > 0 && slash < raw.length() - 1 else {
-    fail("invalid model format: \{raw}")
-  }
-  { provider_id: raw[:slash].to_owned(), model_id: raw[slash + 1:].to_owned() }
-}
-
-///|
-fn ModelSelection::to_string(self : ModelSelection) -> String {
-  "\{self.provider_id}/\{self.model_id}"
-}
-
-///|
-fn translation_opencode_config() -> @opencode.OpenCodeConfigObject {
-  { "permission": @opencode.ConfigString("deny") }
+fn translation_opencode_config() -> @opencode.ConfigObject {
+  { "permission": Json::string("deny") }
 }
 
 ///|
 fn translation_opencode_thread_options(
-  model : ModelSelection?,
+  model : String?,
 ) -> @opencode.ThreadOptions {
   @opencode.ThreadOptions::ThreadOptions(
-    model=model
-      .map(fn(selection) { selection.to_string() })
-      .unwrap_or("opencode-go/deepseek-v4-flash"),
+    model=model.unwrap_or("opencode-go/deepseek-v4-flash"),
     title="mdt-translate",
   )
 }
 
 ///|
-fn translation_codex_thread_options(
-  model : ModelSelection?,
-) -> @codex.ThreadOptions {
+fn translation_codex_thread_options(model : String?) -> @codex.ThreadOptions {
   @codex.ThreadOptions::ThreadOptions(
-    model?=model.map(fn(selection) { selection.model_id }),
+    model=model.unwrap_or("luna"),
     sandbox_mode=@codex.ReadOnly,
     skip_git_repo_check=true,
     approval_policy=@codex.Never,
@@ -89,12 +66,12 @@ async fn translate_markdown_with_client(
 
 ///|
 async fn translate_markdown(
-  provider : Provider,
+  agent : Agent,
   lang : String,
-  model : ModelSelection?,
+  model : String?,
   text : String,
 ) -> String {
-  match provider {
+  match agent {
     Codex => {
       let client = @agent_codex.codex_cli(
         thread_options=translation_codex_thread_options(model),
@@ -103,7 +80,7 @@ async fn translate_markdown(
     }
     OpenCode => {
       let client = @agent_opencode.opencode_cli(
-        options=@opencode.OpenCodeOptions::OpenCodeOptions(
+        options=@opencode.ClientOptions::ClientOptions(
           config=translation_opencode_config(),
         ),
         thread_options=translation_opencode_thread_options(model),

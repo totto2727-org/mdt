@@ -17,13 +17,15 @@ let translate_lang_option : @admiral.OptionDef[String] = @admiral.string(
 let translate_model_option : @admiral.OptionDef[String] = @admiral.string(
   "model",
   short='m',
-  description="Model in provider/model format",
+  description="OpenCode provider/model or Codex model ID",
+  env="MDT_MODEL",
 )
 
 ///|
-let translate_provider_option : @admiral.OptionDef[String] = @admiral.string(
-  "provider",
-  description="Agent provider: opencode or codex",
+let translate_agent_option : @admiral.OptionDef[String] = @admiral.string(
+  "agent",
+  description="Agent CLI: opencode or codex",
+  env="MDT_AGENT",
   default=Some("opencode"),
 )
 
@@ -38,25 +40,18 @@ let translate_force_option : @admiral.OptionDef[Bool] = @admiral.bool(
 struct TranslateOptions {
   file : @path.Path
   lang : String
-  provider : Provider
-  model : ModelSelection?
+  agent : Agent
+  model : String?
   force : Bool
 }
 
 ///|
 fn translate_options(context : @admiral.Context) -> TranslateOptions raise {
-  let provider = parse_provider(
-    context.get_string_required(translate_provider_option),
-  )
-  let model = match context.get_string(translate_model_option) {
-    Some(raw) => Some(parse_model(raw))
-    None => None
-  }
   {
     file: @path.Path(context.get_string_required(translate_file_argument)),
     lang: normalize_locale(context.get_string_required(translate_lang_option)),
-    provider,
-    model,
+    agent: parse_agent(context.get_string_required(translate_agent_option)),
+    model: context.get_string(translate_model_option),
     force: context.get_bool(translate_force_option),
   }
 }
@@ -71,7 +66,7 @@ async fn run_translate(context : @admiral.Context) -> Unit {
   }
   let input = @fs.read_file(options.file.to_string()).text()
   let translated = translate_markdown(
-    options.provider,
+    options.agent,
     options.lang,
     options.model,
     input,
