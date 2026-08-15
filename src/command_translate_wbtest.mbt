@@ -1,57 +1,109 @@
 ///|
-async fn capture_translate_selection(
+async test "translate_options 1 - applies defaults" {
+  let default_options = capture_translate_options(
+    ["README.md", "--lang", "ja"],
+    Map([]),
+  )
+  inspect(default_options, content="README.md|ja|opencode|none|false|file")
+}
+
+///|
+async fn capture_translate_options(
   argv : Array[String],
   env : Map[String, String],
-) -> (String, String?) {
-  let agent = Ref("")
-  let model : Ref[String?] = Ref(None)
+) -> String {
+  let captured = Ref("")
   let app = @admiral.CliApp::CliApp(
     name="mdt-test",
     options=[
       translate_lang_option, translate_agent_option, translate_model_option, translate_force_option,
+      translate_format_option,
     ],
-    positionals=[translate_file_argument],
+    positionals=[translate_files_argument],
     run=Some(context => {
       let options = translate_options(context)
-      agent.val = match options.agent {
+      let agent = match options.agent {
         Codex => "codex"
         OpenCode => "opencode"
       }
-      model.val = options.model
+      let format = match options.format {
+        File => "file"
+        Stdio => "stdio"
+      }
+      captured.val = [
+        options.files.iter().map(file => file.to_string()).join(","),
+        options.lang,
+        agent,
+        options.model.unwrap_or("none"),
+        options.force.to_string(),
+        format,
+      ].join("|")
     }),
   )
   app.run(argv=Some(argv), env~)
-  (agent.val, model.val)
+  captured.val
 }
 
 ///|
-async test "translate options - applies CLI, environment, and default precedence" {
-  let (default_agent, default_model) = capture_translate_selection(
-    ["README.md", "--lang", "ja"],
-    Map([]),
+async test "translate_options 2 - accepts every environment value" {
+  let captured = capture_translate_options(["README.md", "docs/guide.md"], {
+    "MDT_LANG": "JA-jp",
+    "MDT_AGENT": "codex",
+    "MDT_MODEL": "luna",
+    "MDT_FORCE": "true",
+    "MDT_FORMAT": "stdio",
+  })
+  inspect(
+    captured,
+    content="README.md,docs/guide.md|ja-jp|codex|luna|true|stdio",
   )
-  inspect(default_agent, content="opencode")
-  assert_true(default_model is None)
+}
 
-  let (env_agent, env_model) = capture_translate_selection(
-    ["README.md", "--lang", "ja"],
-    { "MDT_AGENT": "codex", "MDT_MODEL": "luna" },
-  )
-  inspect(env_agent, content="codex")
-  match env_model {
-    Some(model) => inspect(model, content="luna")
-    None => fail("expected MDT_MODEL")
-  }
-
-  let (argv_agent, argv_model) = capture_translate_selection(
+///|
+async test "translate_options 3 - prefers CLI values over environment values" {
+  let captured = capture_translate_options(
     [
-      "README.md", "--lang", "ja", "--agent", "opencode", "--model", "opencode-go/deepseek-v4-flash",
+      "README.md", "--lang", "en", "--agent", "opencode", "--model", "opencode-go/deepseek-v4-flash",
+      "--force", "--format", "file",
     ],
-    { "MDT_AGENT": "codex", "MDT_MODEL": "luna" },
+    {
+      "MDT_LANG": "ja",
+      "MDT_AGENT": "codex",
+      "MDT_MODEL": "luna",
+      "MDT_FORCE": "false",
+      "MDT_FORMAT": "stdio",
+    },
   )
-  inspect(argv_agent, content="opencode")
-  match argv_model {
-    Some(model) => inspect(model, content="opencode-go/deepseek-v4-flash")
-    None => fail("expected --model")
+  inspect(
+    captured,
+    content="README.md|en|opencode|opencode-go/deepseek-v4-flash|true|file",
+  )
+}
+
+///|
+test "parse_output_format 1 - accepts file" {
+  debug_inspect(parse_output_format("file"), content="File")
+}
+
+///|
+test "parse_output_format 2 - accepts stdio" {
+  debug_inspect(parse_output_format("stdio"), content="Stdio")
+}
+
+///|
+test "panic_parse_output_format 3 - rejects an unsupported format" {
+  try! (parse_output_format("html") |> ignore)
+}
+
+///|
+async test "panic_ensure_outputs_available - rejects inputs sharing an output path" {
+  let options : TranslateOptions = {
+    files: [@path.Path("guide.md"), @path.Path("guide.en.md")],
+    lang: "ja",
+    agent: OpenCode,
+    model: None,
+    force: true,
+    format: File,
   }
+  try! ensure_outputs_available(options)
 }
