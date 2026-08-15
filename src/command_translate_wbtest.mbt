@@ -97,13 +97,21 @@ test "panic_parse_output_format 3 - rejects an unsupported format" {
 
 ///|
 async test "panic_ensure_outputs_available - rejects inputs sharing an output path" {
+  let root = @fs.tmpdir(prefix="mdt-output-alias-test-")
+  let real = "\{root}/real"
+  @fs.mkdir(real)
+  @fs.symlink("\{root}/alias", target=real)
   let options : TranslateOptions = {
-    files: [@path.Path("guide.md"), @path.Path("guide.en.md").resolve()],
+    files: [
+      @path.Path("\{real}/guide.md"),
+      @path.Path("\{root}/alias/guide.en.md"),
+    ],
     lang: "ja",
     agent: OpenCode,
     model: None,
     force: true,
     format: File,
   }
-  try! ensure_outputs_available(options)
+  try! (ensure_outputs_available(options) |> ignore)
+  @fs.rmdir(root, recursive=true)
 }

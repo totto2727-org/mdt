@@ -114,18 +114,28 @@ async fn run_translate_stdio(options : TranslateOptions) -> Unit {
 }
 
 ///|
-fn translate_output_path(
+async fn translate_output_path(
   options : TranslateOptions,
   file : @path.Path,
-) -> @path.Path {
-  target_path(file, options.lang).resolve()
+) -> String {
+  let output = target_path(file, options.lang).resolve()
+  let output_text = output.to_string()
+  if @fs.exists(output_text) {
+    @fs.realpath(output_text)
+  } else {
+    let parent = @path.Path(@fs.realpath(output.dirname().to_string()))
+    parent.join(@path.Path(output.basename().to_owned())).to_string()
+  }
 }
 
 ///|
-async fn ensure_outputs_available(options : TranslateOptions) -> Unit {
+async fn ensure_outputs_available(options : TranslateOptions) -> Array[String] {
+  let output_paths = @async.all(
+    options.files.map(file => () => translate_output_path(options, file)),
+    max_concurrent=4,
+  )
   let outputs : Set[String] = Set([])
-  for file in options.files {
-    let output_text = translate_output_path(options, file).to_string()
+  for output_text in output_paths {
     guard !outputs.contains(output_text) else {
       fail("multiple input files resolve to the same output: \{output_text}")
     }
@@ -136,14 +146,15 @@ async fn ensure_outputs_available(options : TranslateOptions) -> Unit {
       }
     }
   }
+  output_paths
 }
 
 ///|
 async fn translate_file_to_output(
   options : TranslateOptions,
   file : @path.Path,
+  output_text : String,
 ) -> Unit {
-  let output_text = translate_output_path(options, file).to_string()
   let translated = translate_file(options, file)
   let create_mode : @fs.CreateMode = if options.force {
     CreateOrTruncate
@@ -158,9 +169,11 @@ async fn translate_file_to_output(
 
 ///|
 async fn run_translate_files(options : TranslateOptions) -> Unit {
-  ensure_outputs_available(options)
+  let output_paths = ensure_outputs_available(options)
   @async.all(
-    options.files.map(file => () => translate_file_to_output(options, file)),
+    options.files.mapi((index, file) => {
+      () => translate_file_to_output(options, file, output_paths[index])
+    }),
     max_concurrent=4,
   )
   |> ignore
