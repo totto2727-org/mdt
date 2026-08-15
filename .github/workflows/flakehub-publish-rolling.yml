@@ -1,22 +1,20 @@
-name: "Publish every Git push to main to FlakeHub"
+name: Publish every Git push to main to FlakeHub
+
 on:
   push:
     branches:
-      - "main"
+      - main
+
 jobs:
   flakehub-publish:
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
-      id-token: "write"
-      contents: "read"
+      id-token: write
+      contents: read
     steps:
-      - uses: "actions/checkout@v6"
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: "DeterminateSystems/determinate-nix-action@v3"
-      - uses: "DeterminateSystems/flakehub-push@main"
-        with:
-          name: "totto2727-org/mdt"
-          rolling: true
-          visibility: "public"
-          # include-output-paths: true
+      - uses: totto2727-org/monorepo/.github/actions/setup-nix@main
+      - uses: totto2727-org/monorepo/.github/actions/publish-flakehub@main
