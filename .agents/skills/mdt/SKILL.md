@@ -17,7 +17,7 @@ mdt <file> --lang <code> [--agent <opencode|codex>] [--model <model>] [--force]
 - `<file>` — path to the source Markdown.
 - `--lang, -l` — required. Target language code (e.g. `ja`, `ja-JP`, `en`).
 - `--agent` — optional. Selects `opencode` or `codex`; `MDT_AGENT` provides the environment value. Defaults to `opencode`.
-- `--model, -m` — optional. OpenCode accepts `provider/model`; Codex accepts a model ID. `MDT_MODEL` provides the environment value. Defaults to `opencode-go/deepseek-v4-flash` for OpenCode and `luna` for Codex.
+- `--model, -m` — optional. OpenCode accepts `provider/model`; Codex accepts a model ID. `MDT_MODEL` provides the environment value. Defaults to `opencode-go/deepseek-v4-flash` for OpenCode and `gpt-5.6-luna` for Codex.
 - `--force, -f` — overwrite an existing output file.
 
 Command-line options override environment variables, which override the defaults.
@@ -40,7 +40,7 @@ mdt --lang ja README.md
 # Re-translate after upstream changes
 mdt --lang ja --force README.md
 
-# Translate with Codex and its default luna model
+# Translate with Codex and its default GPT-5.6 Luna model
 mdt --lang en --agent codex docs/AGENTS.md
 
 # Pin an OpenCode model
