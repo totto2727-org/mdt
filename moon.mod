@@ -9,7 +9,7 @@ supported_targets = "native"
 import {
   "moonbitlang/async@0.20.3",
   "moonbitlang/x@0.4.47",
-  "totto2727/admiral@0.6.4",
+  "totto2727/admiral@0.6.2",
   "totto2727/agent-sdk@0.2.0",
   "totto2727/codex-sdk@0.4.0",
   "totto2727/opencode-sdk@0.4.0",
