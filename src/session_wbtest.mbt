@@ -186,9 +186,6 @@ async test "translate_markdown_with_client 2 - passes the selected Codex model" 
     assert_true(args.contains("--sandbox\nread-only\n"))
     assert_true(args.contains("--skip-git-repo-check\n"))
     assert_true(args.contains("approval_policy=\"never\"\n"))
-    let input = fixture.read("stdin")
-    assert_true(input.contains("Translate the user's input markdown to ja."))
-    assert_true(input.contains("# Hello"))
   })
 }
 

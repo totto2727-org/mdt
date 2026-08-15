@@ -1,23 +1,26 @@
 ---
 name: mdt
-description: Translate a Markdown file in-place (or to a sibling language file) using the opencode SDK. Use when localizing README.md, AGENTS.md, docs, or other Markdown into another language while preserving code blocks, fences, and frontmatter.
+description: Translate a Markdown file to a sibling language file using the selected OpenCode or Codex CLI through agent-sdk. Use when localizing README.md, AGENTS.md, docs, or other Markdown while preserving code blocks, fences, and frontmatter.
 allowed-tools: Bash(mdt:*)
 ---
 
-# `mdt` — Markdown translator (opencode-backed)
+# `mdt` — Markdown translator
 
-Wraps the [opencode](https://opencode.ai) SDK to translate a single Markdown file. Designed for doc localization where structure must round-trip: code fences, links, frontmatter, and tables stay intact.
+Uses the provider-neutral `agent-sdk` contract with an OpenCode or Codex adapter to translate a single Markdown file. It is designed for doc localization where code fences, links, frontmatter, and tables must remain intact.
 
 ## Usage
 
 ```bash
-mdt --lang <code> [--model provider/model] [--force] <file>
+mdt <file> --lang <code> [--agent <opencode|codex>] [--model <model>] [--force]
 ```
 
 - `<file>` — path to the source Markdown.
 - `--lang, -l` — required. Target language code (e.g. `ja`, `ja-JP`, `en`).
-- `--model, -m` — optional. `provider/model` form (e.g. `anthropic/claude-sonnet-4-5`). Defaults to whatever opencode is configured to use.
+- `--agent` — optional. Selects `opencode` or `codex`; `MDT_AGENT` provides the environment value. Defaults to `opencode`.
+- `--model, -m` — optional. OpenCode accepts `provider/model`; Codex accepts a model ID. `MDT_MODEL` provides the environment value. Defaults to `opencode-go/deepseek-v4-flash` for OpenCode and `luna` for Codex.
 - `--force, -f` — overwrite an existing output file.
+
+Command-line options override environment variables, which override the defaults.
 
 ## Output filename convention
 
@@ -37,16 +40,19 @@ mdt --lang ja README.md
 # Re-translate after upstream changes
 mdt --lang ja --force README.md
 
-# Pin a specific model
-mdt --lang en --model anthropic/claude-sonnet-4-6 docs/AGENTS.md
+# Translate with Codex and its default luna model
+mdt --lang en --agent codex docs/AGENTS.md
+
+# Pin an OpenCode model
+MDT_AGENT=opencode mdt --lang en --model anthropic/claude-sonnet-4-6 docs/AGENTS.md
 ```
 
 ## Prerequisites
 
-- `opencode` must be installed and authenticated locally (the CLI delegates to the SDK).
-- The chosen `--model` must be available in your opencode provider config.
+- The selected `opencode` or `codex` CLI must be installed and authenticated locally.
+- The chosen model must be available to the selected provider.
 
 ## Limits
 
 - One file per invocation. For batch use, drive `mdt` from a shell loop or `xargs`.
-- Long files may be split internally by opencode; expect the output to be assembled before write, not streamed.
+- The whole file is sent in one prompt, so it must fit within the selected model's context window.
