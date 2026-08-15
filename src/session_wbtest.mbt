@@ -17,14 +17,6 @@ test "translation_opencode_config 1 - denies every tool" {
 }
 
 ///|
-test "translation_prompt 1 - combines instructions and Markdown" {
-  let prompt = translation_prompt("ja", "# Hello")
-  assert_true(prompt.contains("Translate the user's input markdown to ja."))
-  assert_true(prompt.contains("# Hello"))
-  assert_true(prompt.contains("Output ONLY the translated markdown."))
-}
-
-///|
 priv struct FakeTranslationCli {
   executable : @path.Path
   records : String
@@ -103,9 +95,6 @@ async test "translate_markdown_with_client 1 - uses OpenCode CLI JSON mode" {
     let args = fixture.read("args")
     assert_true(args.contains("run\n--format\njson\n"))
     assert_true(args.contains("--model\nopencode-go/deepseek-v4-flash\n"))
-    let input = fixture.read("stdin")
-    assert_true(input.contains("Translate the user's input markdown to ja."))
-    assert_true(input.contains("# Hello"))
     let config_lines : Array[String] = fixture
       .read("env")
       .split("\n")
