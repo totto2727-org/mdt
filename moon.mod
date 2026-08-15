@@ -1,6 +1,6 @@
 name = "totto2727/mdt"
 
-version = "0.1.10"
+version = "0.2.0"
 
 preferred_target = "native"
 

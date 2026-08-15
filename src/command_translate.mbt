@@ -114,10 +114,18 @@ async fn run_translate_stdio(options : TranslateOptions) -> Unit {
 }
 
 ///|
+fn translate_output_path(
+  options : TranslateOptions,
+  file : @path.Path,
+) -> @path.Path {
+  target_path(file, options.lang).normalize()
+}
+
+///|
 async fn ensure_outputs_available(options : TranslateOptions) -> Unit {
   let outputs : Set[String] = Set([])
   for file in options.files {
-    let output_text = target_path(file, options.lang).to_string()
+    let output_text = translate_output_path(options, file).to_string()
     guard !outputs.contains(output_text) else {
       fail("multiple input files resolve to the same output: \{output_text}")
     }
@@ -135,9 +143,16 @@ async fn translate_file_to_output(
   options : TranslateOptions,
   file : @path.Path,
 ) -> Unit {
-  let output_text = target_path(file, options.lang).to_string()
+  let output_text = translate_output_path(options, file).to_string()
   let translated = translate_file(options, file)
-  @fs.write_file(output_text, translated, create_mode=CreateOrTruncate)
+  let create_mode : @fs.CreateMode = if options.force {
+    CreateOrTruncate
+  } else {
+    CreateNew
+  }
+  @async.protect_from_cancel(async fn() {
+    @fs.write_file(output_text, translated, create_mode~)
+  })
   println("Written to \{output_text}")
 }
 

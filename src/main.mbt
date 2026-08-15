@@ -2,7 +2,7 @@
 async fn main {
   let app = @admiral.CliApp::CliApp(
     name="mdt",
-    version="0.1.10",
+    version="0.2.0",
     description="Translate Markdown files via OpenCode or Codex",
     options=[
       translate_lang_option, translate_agent_option, translate_model_option, translate_force_option,
